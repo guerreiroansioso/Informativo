@@ -7,6 +7,10 @@ BRAZIL_STATES_GEOJSON_URL = (
     "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/"
     "public/data/brazil-states.geojson"
 )
+BAR_CHART_HEIGHT = 620
+BAR_CHART_WIDTH = 600
+MAP_HEIGHT = 620
+MAP_WIDTH = 500
 
 
 def build_data() -> pd.DataFrame:
@@ -113,7 +117,12 @@ def render_chart(data: pd.DataFrame, metric: str) -> None:
             alt.Chart(chart_data)
             .mark_bar()
             .encode(
-                x=alt.X("estado_uf:N", sort=state_order, title="Estado"),
+                x=alt.X(
+                    "estado_uf:N",
+                    sort=state_order,
+                    title="Estado",
+                    axis=alt.Axis(labelAngle=-45),
+                ),
                 xOffset=alt.XOffset("indicador:N"),
                 y=alt.Y("casos:Q", title="Casos"),
                 color=alt.Color("indicador:N", title="Indicador"),
@@ -125,7 +134,7 @@ def render_chart(data: pd.DataFrame, metric: str) -> None:
                     alt.Tooltip("taxa_mortes:Q", title="Taxa de mortes", format=".1f"),
                 ],
             )
-            .properties(height=460)
+            .properties(width=BAR_CHART_WIDTH, height=BAR_CHART_HEIGHT)
         )
     else:
         column = "mortes" if metric == "Mortes" else "internacoes"
@@ -135,7 +144,12 @@ def render_chart(data: pd.DataFrame, metric: str) -> None:
             alt.Chart(data)
             .mark_bar(color=color)
             .encode(
-                x=alt.X("estado_uf:N", sort=state_order, title="Estado"),
+                x=alt.X(
+                    "estado_uf:N",
+                    sort=state_order,
+                    title="Estado",
+                    axis=alt.Axis(labelAngle=-45),
+                ),
                 y=alt.Y(f"{column}:Q", title=metric),
                 tooltip=[
                     alt.Tooltip("estado_uf:N", title="Estado"),
@@ -145,10 +159,10 @@ def render_chart(data: pd.DataFrame, metric: str) -> None:
                     alt.Tooltip("taxa_mortes:Q", title="Taxa de mortes", format=".1f"),
                 ],
             )
-            .properties(height=460)
+            .properties(width=BAR_CHART_WIDTH, height=BAR_CHART_HEIGHT)
         )
 
-    st.altair_chart(chart, width="stretch")
+    st.altair_chart(chart, width="content")
 
 
 def render_map(data: pd.DataFrame, metric: str) -> None:
@@ -204,8 +218,12 @@ def render_map(data: pd.DataFrame, metric: str) -> None:
         )
     )
 
-    chart = (base + highlighted).project(type="mercator").properties(height=560)
-    st.altair_chart(chart, width="stretch")
+    chart = (
+        (base + highlighted)
+        .project(type="mercator")
+        .properties(width=MAP_WIDTH, height=MAP_HEIGHT)
+    )
+    st.altair_chart(chart, width="content")
 
 
 def main() -> None:
@@ -224,11 +242,15 @@ def main() -> None:
     )
 
     render_metrics(map_data)
-    st.subheader("Mapa por estado")
-    render_map(map_data, selected_metric)
 
-    st.subheader("Classificacao por estado")
-    render_chart(chart_data, selected_metric)
+    map_column, chart_column = st.columns([1, 1], gap="large")
+    with map_column:
+        st.subheader("Mapa por estado")
+        render_map(map_data, selected_metric)
+
+    with chart_column:
+        st.subheader("Classificacao por estado")
+        render_chart(chart_data, selected_metric)
 
     with st.expander("Ver dados usados no grafico"):
         st.dataframe(
